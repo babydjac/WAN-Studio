@@ -59,7 +59,6 @@ class WAN22PromptStudioNode:
             "required": {
                 "user_idea": ("STRING", {"default": "", "multiline": True}),
                 "content_mode": (["SFW", "NSFW"], {"default": "SFW"}),
-                "api_key": ("STRING", {"default": ""}),
                 "prompt_complexity": (["Basic", "Advanced", "Cinematic Pro"], {"default": "Advanced"}),
                 "style_preference": (["Realistic", "Cinematic", "Artistic", "Documentary", "Experimental", "Pornographic"], {"default": "Cinematic"}),
                 "motion_intensity": (["Subtle", "Moderate", "Dynamic", "Extreme"], {"default": "Moderate"}),
@@ -71,6 +70,7 @@ class WAN22PromptStudioNode:
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 1.5, "step": 0.1}),
             },
             "optional": {
+                "api_key": ("STRING", {"forceInput": True}),
                 "specific_subject": ("STRING", {"default": "", "multiline": False}),
                 "environment": ("STRING", {"default": "", "multiline": False}),
                 "mood_keywords": ("STRING", {"default": "", "multiline": False}),
@@ -208,9 +208,9 @@ class WAN22PromptStudioNode:
 
         return main_prompt, breakdown, technical_notes
 
-    def generate_expert_prompt(self, user_idea, content_mode, api_key, prompt_complexity, style_preference,
+    def generate_expert_prompt(self, user_idea, content_mode, prompt_complexity, style_preference,
                              motion_intensity, camera_style, lighting_mood, color_palette,
-                             shot_type, time_of_day, temperature, specific_subject="",
+                             shot_type, time_of_day, temperature, api_key="", specific_subject="",
                              environment="", mood_keywords="", technical_specs=""):
 
         if not api_key.strip():

@@ -1,0 +1,6 @@
+[project]
+name = "WAN-Studio"
+description = "ComfyUI WAN 2.2 Workflow Node with Grok / X.AI"
+version = "1.0.0"
+dependencies = ["requests"]
+authors = [{ name = "[Your Name]", email = "your@email.com" }]
