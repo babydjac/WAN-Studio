@@ -1,5 +1,10 @@
 import requests
 import json
+import torch
+import base64
+import numpy as np
+from io import BytesIO
+from PIL import Image
 
 # Comprehensive WAN 2.2 prompt engineering system with unrestricted user control
 WAN22_EXPERT_SYSTEM = """
@@ -75,6 +80,7 @@ class WAN22PromptStudioNode:
                 "environment": ("STRING", {"default": "", "multiline": False}),
                 "mood_keywords": ("STRING", {"default": "", "multiline": False}),
                 "technical_specs": ("STRING", {"default": "", "multiline": False}),
+                "reference_image": ("IMAGE",),
             }
         }
 
@@ -84,10 +90,35 @@ class WAN22PromptStudioNode:
     CATEGORY = "Video/AI/WAN2.2"
     OUTPUT_NODE = False
 
-    def _build_context_prompt(self, user_idea, content_mode, complexity, style, motion, camera, lighting, color, shot, time_of_day, subject, environment, mood, tech_specs):
+    def _process_image(self, image):
+        """Convert ComfyUI image tensor to base64 string"""
+        if image is None:
+            return None
+            
+        # Handle batch dimension - take first image [B,H,W,C] -> [H,W,C]
+        img_tensor = image[0]
+        
+        # Convert tensor to numpy array (values are 0-1, need 0-255)
+        i = 255. * img_tensor.cpu().numpy()
+        
+        # Create PIL Image
+        img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+        
+        # Save to buffer
+        buffered = BytesIO()
+        img.save(buffered, format="JPEG", quality=95)
+        
+        # Encode to base64
+        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        return f"data:image/jpeg;base64,{img_str}"
+
+    def _build_context_prompt(self, user_idea, content_mode, complexity, style, motion, camera, lighting, color, shot, time_of_day, subject, environment, mood, tech_specs, has_image=False):
         """Build a detailed context prompt for Grok based on user preferences"""
 
         context_additions = []
+
+        if has_image:
+            context_additions.append("VISION ANALYSIS: A reference image has been provided. Analyze its visual style, composition, lighting, and subject matter. Use this analysis as the PRIMARY foundation for the prompt, blending it with any specific user requirements below.")
 
         if content_mode == "SFW":
             context_additions.append("Ensure the scene remains safe for work with tasteful, broadly appropriate content and avoid explicit nudity, graphic sex, or extreme violence unless explicitly requested.")
@@ -211,19 +242,24 @@ class WAN22PromptStudioNode:
     def generate_expert_prompt(self, user_idea, content_mode, prompt_complexity, style_preference,
                              motion_intensity, camera_style, lighting_mood, color_palette,
                              shot_type, time_of_day, temperature, api_key="", specific_subject="",
-                             environment="", mood_keywords="", technical_specs=""):
+                             environment="", mood_keywords="", technical_specs="", reference_image=None):
 
         if not api_key.strip():
             return ("Error: Grok API key is required for expert WAN 2.2 prompting.", "No API key provided", "Configure your X.AI API key")
 
-        if not user_idea.strip():
-            return ("Error: Please provide an idea for the video prompt.", "No input provided", "Enter your video concept in the user_idea field")
+        # Allow empty user idea if image is provided
+        if not user_idea.strip() and reference_image is None:
+            return ("Error: Please provide an idea or a reference image.", "No input provided", "Enter your video concept or connect an image")
 
+        # Process image if present
+        base64_image = self._process_image(reference_image)
+        
         # Build the context-aware prompt
         context_prompt = self._build_context_prompt(
             user_idea, content_mode, prompt_complexity, style_preference, motion_intensity,
             camera_style, lighting_mood, color_palette, shot_type, time_of_day,
-            specific_subject, environment, mood_keywords, technical_specs
+            specific_subject, environment, mood_keywords, technical_specs, 
+            has_image=(base64_image is not None)
         )
 
         # Prepare the API call
@@ -232,11 +268,26 @@ class WAN22PromptStudioNode:
             "Content-Type": "application/json"
         }
 
+        # Construct message content based on whether image is present
+        if base64_image:
+            user_content = [
+                {"type": "text", "text": context_prompt},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": base64_image,
+                        "detail": "high"
+                    }
+                }
+            ]
+        else:
+            user_content = context_prompt
+
         payload = {
             "model": "grok-3-latest",
             "messages": [
                 {"role": "system", "content": WAN22_EXPERT_SYSTEM},
-                {"role": "user", "content": context_prompt}
+                {"role": "user", "content": user_content}
             ],
             "temperature": temperature,
             "max_tokens": 2000,
@@ -267,6 +318,7 @@ Content Mode: {content_mode}
 Complexity Level: {prompt_complexity}
 Style: {style_preference}
 Motion: {motion_intensity}
+Input Type: {"Text + Image" if base64_image else "Text Only"}
 Camera: {camera_style}
 Lighting: {lighting_mood}
 Colors: {color_palette}
@@ -281,6 +333,7 @@ PROMPT STRUCTURE USED:
 Content Mode: {content_mode}
 Temperature: {temperature}
 Model: grok-3-latest
+Input: {"Multi-modal (Vision)" if base64_image else "Text"}
 Prompt Length: {len(main_prompt)} characters
 
 WAN 2.2 FRAMEWORK APPLIED:
