@@ -63,6 +63,7 @@ class WAN22PromptStudioNode:
         return {
             "required": {
                 "user_idea": ("STRING", {"default": "", "multiline": True}),
+                "grok_model": (["grok-2-vision-1212", "grok-2-vision-latest", "grok-3-latest", "grok-beta"], {"default": "grok-2-vision-1212"}),
                 "content_mode": (["SFW", "NSFW"], {"default": "SFW"}),
                 "prompt_complexity": (["Basic", "Advanced", "Cinematic Pro"], {"default": "Advanced"}),
                 "style_preference": (["Realistic", "Cinematic", "Artistic", "Documentary", "Experimental", "Pornographic"], {"default": "Cinematic"}),
@@ -239,20 +240,20 @@ class WAN22PromptStudioNode:
 
         return main_prompt, breakdown, technical_notes
 
-    def generate_expert_prompt(self, user_idea, content_mode, prompt_complexity, style_preference,
+    def generate_expert_prompt(self, user_idea, grok_model, content_mode, prompt_complexity, style_preference,
                              motion_intensity, camera_style, lighting_mood, color_palette,
-                             shot_type, time_of_day, temperature, api_key="", specific_subject="",
-                             environment="", mood_keywords="", technical_specs="", reference_image=None):
+                             shot_type, time_of_day, temperature, api_key="", image=None, specific_subject="",
+                             environment="", mood_keywords="", technical_specs=""):
 
         if not api_key.strip():
             return ("Error: Grok API key is required for expert WAN 2.2 prompting.", "No API key provided", "Configure your X.AI API key")
 
         # Allow empty user idea if image is provided
-        if not user_idea.strip() and reference_image is None:
+        if not user_idea.strip() and image is None:
             return ("Error: Please provide an idea or a reference image.", "No input provided", "Enter your video concept or connect an image")
 
         # Process image if present
-        base64_image = self._process_image(reference_image)
+        base64_image = self._process_image(image)
         
         # Build the context-aware prompt
         context_prompt = self._build_context_prompt(
@@ -284,7 +285,7 @@ class WAN22PromptStudioNode:
             user_content = context_prompt
 
         payload = {
-            "model": "grok-3-latest",
+            "model": grok_model,
             "messages": [
                 {"role": "system", "content": WAN22_EXPERT_SYSTEM},
                 {"role": "user", "content": user_content}
@@ -332,7 +333,7 @@ PROMPT STRUCTURE USED:
             technical_info = f"""TECHNICAL SPECIFICATIONS:
 Content Mode: {content_mode}
 Temperature: {temperature}
-Model: grok-3-latest
+Model: {grok_model}
 Input: {"Multi-modal (Vision)" if base64_image else "Text"}
 Prompt Length: {len(main_prompt)} characters
 
