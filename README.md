@@ -1,5 +1,9 @@
 # 🚀 WAN-Studio for ComfyUI: Next-Gen Grok Prompt Engineering
 
+<<<<<<< HEAD
+=======
+![WAN-Studio Banner](https://i.imgur.com/z0pQW5w.png)
+>>>>>>> a1af0f3 (Initial WAN-Studio commit for ComfyUI)
 
 **WAN-Studio** is an advanced ComfyUI plugin for AI video creators and prompt engineers. Tap into X.AI's Grok-3 model for cinematic, NSFW, realistic or experimental WAN 2.2 video prompts. Everything is automated—dynamic color coding, expert system guidance, and instant API integration.
 
@@ -40,6 +44,8 @@ Or manually move the folder.
   - **Optimized WAN 2.2 prompt** for Grok-powered video generation.
   - **Prompt breakdown:** expert analysis of content, choices, style.
   - **Technical notes:** temperature, model, shot, aesthetic, dynamic details.
+
+![Demo Node](https://i.imgur.com/GbqQylS.png)
 
 ---
 
